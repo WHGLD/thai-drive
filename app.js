@@ -650,8 +650,8 @@
   const OFFICER = [
     { fig: 'rUp', stop: ['f'], name: 'Правая рука согнута вверх, ладонь вперёд', mean: 'Стоят те, кто едет СПЕРЕДИ — навстречу его лицу', go: 'Разрешает ехать: поворачивает ладонь и машет назад', law: 'ст. 24(4)', exam: 1 },
     { fig: 'lOut', stop: ['b'], name: 'Левая рука вытянута в сторону, на уровне плеча', mean: 'Стоят те, кто едет СЗАДИ — к его спине', go: 'Разрешает ехать: опускает руку и машет вперёд', law: 'ст. 24(1)', exam: 1 },
-    { fig: 'rUp+lOut', stop: ['f', 'b'], name: 'Правая согнута вверх + левая вытянута', mean: 'Стоят и спереди, и сзади — едут только те, кто сбоку', law: 'ст. 24(5)', exam: 1 },
-    { fig: 'lPalm', stop: ['l'], name: 'Рука вытянута в сторону, ладонь поднята «стеной»', mean: 'Стоят те, кто едет с ЭТОЙ стороны — куда смотрит ладонь (любая рука)', go: 'Разрешает ехать: переворачивает ладонь и машет через голову назад', law: 'ст. 24(2)' },
+    { fig: 'rUp+lOut', stop: ['f', 'b'], name: 'Правая согнута вверх + левая вытянута', mean: 'Стоят и спереди, и сзади — едут только те, кто сбоку', law: 'ст. 24(5)' },
+    { fig: 'lPalm', stop: ['l'], name: 'Рука вытянута в сторону, ладонь поднята «стеной»', mean: 'Стоят те, кто едет с той стороны, где вытянута рука (рука любая)', go: 'Разрешает ехать: переворачивает ладонь и машет через голову назад', law: 'ст. 24(2)' },
     { fig: 'bothPalm', stop: ['l', 'r'], name: 'Обе руки в стороны, ладони подняты', mean: 'Стоят с обеих сторон — слева и справа от него', law: 'ст. 24(3)' },
   ];
   const DRIVER = [
@@ -673,7 +673,7 @@
       <div class="card memo g-memo">
         <span class="gm-h">Как запомнить</span>
         <p>👉 <b>П</b>равая (согнута вверх) — стоят <b>П</b>еред ним. <b>Л</b>евая в сторону — стоят сзади, за спиной.</p>
-        <p>✋ Поднятая ладонь — «стена»: куда она смотрит, оттуда не едут.</p>
+        <p>✋ Рука в сторону с поднятой ладонью — «стена» сбоку: стоят те, кто едет со стороны этой руки.</p>
         <p>⚠️ Ловушка: левая рука в сторону. Ладонь <u>не</u> поднята — стоят <b>сзади</b>. Ладонь поднята — стоят <b>слева</b>.</p>
       </div>
       <p class="muted small g-legend">Схема — вид сверху: кружок — регулировщик, смотрит вверх ↑. <span class="lg-s">красные</span> стоят, <span class="lg-g">зелёные</span> едут.</p>
@@ -706,12 +706,12 @@
           <div class="g-mean small">${esc(d.how)}</div>
           <div class="g-law">✅ ${d.law}</div>
         </div>`).join('')}</div>
-      <p class="muted small" style="margin:8px 4px 0">Если руль слева — сигналы подают фарами и поворотниками, а не рукой.</p>
+      <p class="muted small" style="margin:8px 4px 0">Если руль слева — вместо жестов рукой подают световые сигналы: поворотники, стоп-сигналы (ст. 37).</p>
 
       <h2 class="nh">На мотоцикле<small>Если не работают поворотники или стоп-сигнал</small></h2>
       <div class="card nlist">
         <div class="nnote">✅ Отдельных жестов для мотоцикла в законе нет: ст. 37 одна для всех водителей. В пособии DLT для мотоциклистов — тот же текст. Значит, те же жесты, <b>правой рукой</b>.</div>
-        <div class="nnote">✅ Сигнал подают заранее: поворотник — не меньше чем за 30 м до поворота (ст. 36).</div>
+        <div class="nnote">✅ Если жест не видно — из-за машины, груза или плохой видимости — включают световой сигнал не меньше чем за 30 м до поворота, перестроения или остановки (ст. 36).</div>
         <div class="nnote">💡 На практике: правая рука — это газ и передний тормоз. Сначала сбросьте газ, руль держите левой, жест — коротко.</div>
       </div>
       </div>
@@ -719,6 +719,68 @@
     $('#view').onclick = e => {
       if (e.target.closest('[data-act="ghide"]')) { S.gHide = !S.gHide; save(); const y = window.scrollY; screenGestures(); window.scrollTo(0, y); return; }
       const c = e.target.closest('[data-reveal]'); if (c && S.gHide) c.classList.toggle('shown');
+    };
+  }
+
+  /* ---------- справка (traps.md + review.md) ---------- */
+  const md = t => esc(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+  const TRAP_TAG = { rep: ['🔁', 'ошибался несколько раз'], pin: ['📌', 'на повтор'], warn: ['⚠️', 'спорный ключ'] };
+  let guideQuery = '';
+  function screenGuide() {
+    const G = window.GUIDE;
+    chrome({ title: 'Справка', subtitle: 'Ловушки экзамена и отличия от ПДД РФ', tab: 'guide' });
+    if (!G) { view('<div class="empty">Нет данных</div>'); return; }
+    const errN = activeErrors().length;
+    const trapCard = t => `<div class="card trap" id="t-${t.id}">
+        <div class="trap-h"><b>${esc(t.title)}</b>${t.tag ? `<span class="ttag ttag-${t.tag}" title="${TRAP_TAG[t.tag][1]}">${TRAP_TAG[t.tag][0]} ${TRAP_TAG[t.tag][1]}</span>` : ''}</div>
+        <div class="muted small">${esc(t.topic)}</div>
+        ${t.imgs ? `<div class="trap-imgs">${t.imgs.map(([src, cap]) => `<figure>${img(src, 'trap-img', true)}<figcaption>${esc(cap)}</figcaption></figure>`).join('')}</div>` : ''}
+        <ul class="trap-text">${t.text.map(x => `<li>${md(x)}</li>`).join('')}</ul></div>`;
+    view(`
+      <div class="chips nchips">${[['review', 'Что повторить'], ['ru', 'Отличия от РФ'], ['traps', 'Ловушки'], ['links', 'Шпаргалки']].map(([id, t]) => `<button class="chip" data-go="${id}">${t}</button>`).join('')}</div>
+
+      <section class="nsec" id="n-review"><h2 class="nh">Что повторить</h2>
+      ${G.retake.map(r => `<div class="card">
+        <b>Пройти тему заново: ${esc(TOPIC[r.topic]?.ru || r.topic)}</b>
+        <p class="muted small" style="margin:4px 0 10px">${esc(r.why)}. Сначала прочитать: ${r.read.map(id => `<a href="#" data-trap="${id}">${esc(G.traps.find(t => t.id === id)?.title || id)}</a>`).join(', ')}.</p>
+        <button class="btn" data-retake="${r.topic}">Тест по теме · ${TEST_SIZE} вопросов</button></div>`).join('')}
+      <div class="card" style="margin-top:10px"><b>Мои ошибки</b>
+        <p class="muted small" style="margin:4px 0 10px">${errN ? `Сейчас ${plural(errN, 'вопрос', 'вопроса', 'вопросов')} на повтор — включая отмеченные 📌 в ваших заметках.` : 'Активных ошибок нет.'}</p>
+        <button class="btn ghost" data-go-hash="#errors">Открыть «Ошибки»</button></div>
+      </section>
+
+      <section class="nsec" id="n-ru"><h2 class="nh">Отличия от ПДД РФ<small>Только самые важные. На экзамене — по тайским правилам</small></h2>
+      <div class="ru-list">${G.ru.map(([topic, th, ru]) => `<div class="card ru-row">
+        <div class="ru-t">${esc(topic)}</div>
+        <div class="ru-th"><span class="flag">🇹🇭</span><span>${md(th)}</span></div>
+        <div class="ru-ru"><span class="flag">🇷🇺</span><span>${md(ru)}</span></div></div>`).join('')}</div>
+      </section>
+
+      <section class="nsec" id="n-traps"><h2 class="nh">Ловушки экзамена<small>Где ключ DLT неочевиден или вы ошибались</small></h2>
+      <label class="search">${ICON.search}<input id="gq" type="search" placeholder="Поиск: HOV, бордюр, 15 дней…" autocomplete="off"></label>
+      <div id="gtraps" class="stack"></div>
+      </section>
+
+      <section class="nsec" id="n-links"><h2 class="nh">Шпаргалки</h2>
+      <div class="stack">
+        <button class="card cat" data-go-hash="#gestures"><span class="sw sw-gest">✋</span><span class="t"><b>Жесты регулировщика и водителя</b><span>кто стоит, сигналы рукой, свисток</span></span><span class="chev">${ICON.chev}</span></button>
+        <button class="card cat" data-go-hash="#numbers"><span class="sw sw-gest">🔢</span><span class="t"><b>Цифры</b><span>скорости, расстояния, сроки, штрафы</span></span><span class="chev">${ICON.chev}</span></button>
+      </div></section>
+      <p class="muted small" style="text-align:center;margin-top:18px">Источник: traps.md, review.md · Закон о дорожном движении 1979</p>`);
+    const inp = $('#gq'); inp.value = guideQuery;
+    const draw = () => {
+      const q = guideQuery.trim().toLowerCase();
+      const list = G.traps.filter(t => !q || [t.title, t.topic, ...t.text, ...(t.imgs || []).map(i => i[1])].join(' ').toLowerCase().includes(q));
+      $('#gtraps').innerHTML = list.length ? list.map(trapCard).join('') : '<p class="muted">Ничего не найдено</p>';
+    };
+    draw();
+    inp.oninput = () => { guideQuery = inp.value; draw(); };
+    $('#view').onclick = e => {
+      const g = e.target.closest('[data-go]'); if (g) { document.getElementById('n-' + g.dataset.go)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+      const t = e.target.closest('[data-trap]');
+      if (t) { e.preventDefault(); if (guideQuery) { guideQuery = ''; inp.value = ''; draw(); } document.getElementById('t-' + t.dataset.trap)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+      const r = e.target.closest('[data-retake]'); if (r) { startQuiz('topics', pickFrom(D.questions.filter(q => q.t === r.dataset.retake).map(q => q.id))); return; }
+      const h = e.target.closest('[data-go-hash]'); if (h) go(h.dataset.goHash);
     };
   }
 
@@ -736,6 +798,7 @@
     if (h === '#numbers') return screenNumbers();
     if (h === '#words') return screenWords();
     if (h === '#gestures') return screenGestures();
+    if (h === '#guide') return screenGuide();
     if (h.startsWith('#signs/')) return screenSigns(h.slice(7));
     if (h === '#signs') return screenSigns(null);
     if (S.quiz && S.quiz.done) { S.quiz = null; save(); }
