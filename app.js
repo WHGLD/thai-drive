@@ -359,6 +359,8 @@
       } else {
         const n = favs().length;
         html = `<div class="stack">
+          <button class="card cat" data-gest><span class="sw sw-gest">✋</span>
+            <span class="t"><b>Жесты регулировщика и водителя</b><span>свисток, сигналы рукой · с анимацией</span></span><span class="chev">${ICON.chev}</span></button>
           <button class="card cat" data-cat="fav"><span class="sw sw-fav">${ICON.star}</span>
             <span class="t"><b>Избранное</b><span>${n ? plural(n, 'знак', 'знака', 'знаков') : 'отмечайте знаки звёздочкой'}</span></span><span class="chev">${ICON.chev}</span></button>
           ${D.signs.map(c => { const [ru, th] = catParts(c.title); return `
@@ -380,6 +382,7 @@
         return;
       }
       if (e.target.closest('[data-act="clear-fav"]')) { if (confirm('Убрать все знаки из избранного?')) { S.fav = {}; save(); draw(); } return; }
+      if (e.target.closest('[data-gest]')) { signQuery = ''; return go('#gestures'); }
       const c = e.target.closest('[data-cat]'); if (c) { signQuery = ''; return go('#signs/' + c.dataset.cat); }
       const s = e.target.closest('[data-sign]'); if (s) { const [ci, si] = s.dataset.sign.split(':'); openSign(D.signs.find(x => x.id === ci).signs[+si]); }
     };
@@ -603,6 +606,122 @@
     $('#sheet').hidden = false;
   }
 
+  /* ---------- gestures: регулировщик (ст. 24–25) и водитель (ст. 37) ---------- */
+  // фигура регулировщика лицом к нам: его ПРАВАЯ рука — слева на картинке
+  function officerSvg(fig) {
+    const arm = (d, hot) => `<path d="${d}" class="${hot ? 'arm hot' : 'arm'}"/>`;
+    const R = { down: arm('M44 50 L38 92'), up: arm('M44 50 L14 50 L14 18', 1) };
+    const L = { down: arm('M76 50 L82 92'), out: arm('M76 50 L114 50', 1), palm: arm('M76 50 L110 50 L110 34', 1) };
+    const [r, l] = { rUp: ['up', 'down'], lOut: ['down', 'out'], 'rUp+lOut': ['up', 'out'], lPalm: ['down', 'palm'], bothPalm: ['palmR', 'palm'] }[fig];
+    const right = r === 'palmR' ? arm('M44 50 L10 50 L10 34', 1) : R[r];
+    return `<svg viewBox="0 0 124 150" class="g-fig" aria-hidden="true">
+      <circle cx="60" cy="26" r="12" class="body"/><path d="M44 42h32v52H44z" class="body" rx="6"/>
+      <path d="M48 94l-3 46M72 94l3 46" class="leg"/>${right}${L[l]}
+      <text x="22" y="146" class="lbl">прав.</text><text x="98" y="146" class="lbl" text-anchor="middle">лев.</text></svg>`;
+  }
+  // вид сверху: регулировщик в центре смотрит ВВЕРХ; f — спереди, b — сзади, l/r — слева/справа от него
+  function topSvg(stop) {
+    const G = {
+      f: ['M60 6 V30', '54,28 66,28 60,37', 'M50 41 H70'], b: ['M60 114 V90', '54,92 66,92 60,83', 'M50 79 H70'],
+      l: ['M6 60 H30', '28,54 28,66 37,60', 'M41 50 V70'], r: ['M114 60 H90', '92,54 92,66 83,60', 'M79 50 V70'],
+    };
+    const arrows = Object.entries(G).map(([k, [d, head, bar]]) => { const st = stop.includes(k);
+      return `<g class="${st ? 'stop' : 'go'}"><path d="${d}" class="ga"/><polygon points="${head}" class="gh"/>${st ? `<path d="${bar}" class="bar"/>` : ''}</g>`; }).join('');
+    return `<svg viewBox="0 0 120 120" class="g-top" aria-hidden="true">
+      <path d="M44 0h32v120H44zM0 44h120v32H0z" class="road"/>${arrows}
+      <circle cx="60" cy="60" r="8" class="cop"/><path d="M55 55 L60 47 L65 55z" class="nose"/></svg>`;
+  }
+  // водитель: вид СЗАДИ на машину (так видит тот, кто едет следом); руль справа — рука торчит справа
+  function driverSvg(kind) {
+    const sh = 'M104 52';
+    const armStraight = `<path d="${sh} L132 52" class="arm hot"/>`;
+    const body = `<rect x="18" y="50" width="90" height="38" rx="9" class="car"/><path d="M30 50 L38 24 H90 L98 50z" class="car glass-frame"/><path d="M36 48 L42 28 H86 L92 48z" class="glass"/>
+      <circle cx="78" cy="38" r="7" class="head"/><rect x="22" y="58" width="14" height="9" rx="2" class="tail"/><rect x="90" y="58" width="14" height="9" rx="2" class="tail"/>
+      <rect x="22" y="86" width="16" height="10" rx="3" class="tyre"/><rect x="88" y="86" width="16" height="10" rx="3" class="tyre"/><rect x="52" y="70" width="22" height="9" rx="1.5" class="plate"/>`;
+    const parts = {
+      right: armStraight,
+      slow: `<g class="anim-updown">${armStraight}<circle cx="133" cy="52" r="4.5" class="hand"/></g>`,
+      pass: `${armStraight}<g class="anim-fwd"><path d="M132 52 L140 46" class="arm hot"/></g><path d="M126 30 V16 M121 21 L126 15 L131 21" class="hint"/>`,
+      left: `${armStraight}<g class="anim-left"><path d="M132 52 L132 38" class="arm hot"/></g><path d="M112 20 H96 M101 15 L95 20 L101 25" class="hint"/>`,
+      stop: `<path d="${sh} L124 52 L124 24" class="arm hot"/><rect x="119" y="13" width="10" height="13" rx="4" class="hand"/>`,
+    };
+    return `<svg viewBox="0 0 146 100" class="g-car" aria-hidden="true">${body}${parts[kind]}</svg>`;
+  }
+  const OFFICER = [
+    { fig: 'rUp', stop: ['f'], name: 'Правая рука согнута вверх, ладонь вперёд', mean: 'Стоят те, кто едет СПЕРЕДИ — навстречу его лицу', go: 'Разрешает ехать: поворачивает ладонь и машет назад', law: 'ст. 24(4)', exam: 1 },
+    { fig: 'lOut', stop: ['b'], name: 'Левая рука вытянута в сторону, на уровне плеча', mean: 'Стоят те, кто едет СЗАДИ — к его спине', go: 'Разрешает ехать: опускает руку и машет вперёд', law: 'ст. 24(1)', exam: 1 },
+    { fig: 'rUp+lOut', stop: ['f', 'b'], name: 'Правая согнута вверх + левая вытянута', mean: 'Стоят и спереди, и сзади — едут только те, кто сбоку', law: 'ст. 24(5)', exam: 1 },
+    { fig: 'lPalm', stop: ['l'], name: 'Рука вытянута в сторону, ладонь поднята «стеной»', mean: 'Стоят те, кто едет с ЭТОЙ стороны — куда смотрит ладонь (любая рука)', go: 'Разрешает ехать: переворачивает ладонь и машет через голову назад', law: 'ст. 24(2)' },
+    { fig: 'bothPalm', stop: ['l', 'r'], name: 'Обе руки в стороны, ладони подняты', mean: 'Стоят с обеих сторон — слева и справа от него', law: 'ст. 24(3)' },
+  ];
+  const DRIVER = [
+    { k: 'right', name: 'Направо или перестроиться вправо', how: 'Рука вытянута в сторону на уровне плеча — неподвижно', law: 'ст. 37(4)' },
+    { k: 'slow', name: 'Снижаю скорость', how: 'Рука вытянута, машет вверх-вниз несколько раз', law: 'ст. 37(1)', exam: 1 },
+    { k: 'pass', name: 'Обгоняйте, проезжайте', how: 'Рука вытянута, кисть машет вперёд несколько раз', law: 'ст. 37(3)' },
+    { k: 'left', name: 'Налево или перестроиться влево', how: 'Рука вытянута, кисть загнута вверх и машет влево (над крышей) несколько раз', law: 'ст. 37(5)' },
+    { k: 'stop', name: 'Останавливаюсь', how: 'Рука в сторону, предплечье вверх под прямым углом, ладонь вперёд — неподвижно', law: 'ст. 37(2)' },
+  ];
+  function screenGestures() {
+    chrome({ title: 'Жесты', subtitle: 'Регулировщик и сигналы рукой водителя', back: true, tab: 'signs' });
+    const hide = !!S.gHide;
+    const ex = x => x.exam ? '<span class="g-exam">в тестах</span>' : '';
+    view(`
+      <div class="card ntop"><div><b>Проверь себя</b><span class="muted small">значения скрыты — нажмите на карточку</span></div>
+        <button class="switch ${hide ? 'on' : ''}" data-act="ghide" aria-pressed="${hide}"><i></i></button></div>
+      <div id="gbody" class="${hide ? 'g-hidden' : ''}">
+      <h2 class="nh">Регулировщик<small>Его жесты главнее светофора, знаков и разметки</small></h2>
+      <div class="card memo g-memo">
+        <span class="gm-h">Как запомнить</span>
+        <p>👉 <b>П</b>равая (согнута вверх) — стоят <b>П</b>еред ним. <b>Л</b>евая в сторону — стоят сзади, за спиной.</p>
+        <p>✋ Поднятая ладонь — «стена»: куда она смотрит, оттуда не едут.</p>
+        <p>⚠️ Ловушка: левая рука в сторону. Ладонь <u>не</u> поднята — стоят <b>сзади</b>. Ладонь поднята — стоят <b>слева</b>.</p>
+      </div>
+      <p class="muted small g-legend">Схема — вид сверху: кружок — регулировщик, смотрит вверх ↑. <span class="lg-s">красные</span> стоят, <span class="lg-g">зелёные</span> едут.</p>
+      <div class="stack">${OFFICER.map(o => `
+        <div class="card g-card" data-reveal>
+          <div class="g-pics">${officerSvg(o.fig)}${topSvg(o.stop)}</div>
+          <div class="g-name">${esc(o.name)} ${ex(o)}</div>
+          <div class="g-mean">${esc(o.mean)}</div>
+          ${o.go ? `<div class="g-go small muted">${esc(o.go)}</div>` : ''}
+          <div class="g-law">✅ ${o.law}</div>
+        </div>`).join('')}</div>
+      <div class="card nlist" style="margin-top:12px">
+        <div class="nrow"><span class="nk"><b>— один длинный</b></span><span class="nv">свисток: <span class="g-ans">немедленно остановиться</span> ✅</span></div>
+        <div class="nrow"><span class="nk"><b>• • два коротких</b></span><span class="nv">свисток: <span class="g-ans">можно ехать</span> ✅</span></div>
+        <div class="nrow"><span class="nk"><b>Нет стоп-линии</b></span><span class="nv"><span class="g-ans">остановиться не ближе 3 м от регулировщика</span> ✅</span></div>
+      </div>
+      <p class="muted small" style="margin:6px 4px 0">Свисток — ст. 25, 3 м — ст. 24 Закона о дорожном движении.</p>
+
+      <h2 class="nh">Сигналы рукой водителя<small>Только ПРАВОЙ рукой — руль справа (ст. 37)</small></h2>
+      <div class="card memo g-memo">
+        <span class="gm-h">Как запомнить</span>
+        <p>Всё показывается <b>прямой</b> рукой, кроме <b>«стоп»</b> — там предплечье вверх и ладонь «стоп», как у регулировщика.</p>
+        <p>Рука <b>неподвижна</b> — направо: рука сама показывает в сторону поворота.</p>
+        <p>Рука <b>машет</b> — объясняет: вверх-вниз «тише-тише», вперёд «давай, обгоняй», через крышу влево «я налево».</p>
+      </div>
+      <p class="muted small g-legend">Вид сзади — так жест видит тот, кто едет за вами.</p>
+      <div class="g-grid">${DRIVER.map(d => `
+        <div class="card g-dcard" data-reveal>${driverSvg(d.k)}
+          <div class="g-name">${esc(d.name)} ${ex(d)}</div>
+          <div class="g-mean small">${esc(d.how)}</div>
+          <div class="g-law">✅ ${d.law}</div>
+        </div>`).join('')}</div>
+      <p class="muted small" style="margin:8px 4px 0">Если руль слева — сигналы подают фарами и поворотниками, а не рукой.</p>
+
+      <h2 class="nh">На мотоцикле<small>Если не работают поворотники или стоп-сигнал</small></h2>
+      <div class="card nlist">
+        <div class="nnote">✅ Отдельных жестов для мотоцикла в законе нет: ст. 37 одна для всех водителей. В пособии DLT для мотоциклистов — тот же текст. Значит, те же жесты, <b>правой рукой</b>.</div>
+        <div class="nnote">✅ Сигнал подают заранее: поворотник — не меньше чем за 30 м до поворота (ст. 36).</div>
+        <div class="nnote">💡 На практике: правая рука — это газ и передний тормоз. Сначала сбросьте газ, руль держите левой, жест — коротко.</div>
+      </div>
+      </div>
+      <p class="muted small" style="text-align:center;margin-top:18px">Источник: Закон о дорожном движении 1979, ст. 24, 25, 36, 37; пособие DLT для мотоциклистов (2023)</p>`);
+    $('#view').onclick = e => {
+      if (e.target.closest('[data-act="ghide"]')) { S.gHide = !S.gHide; save(); const y = window.scrollY; screenGestures(); window.scrollTo(0, y); return; }
+      const c = e.target.closest('[data-reveal]'); if (c && S.gHide) c.classList.toggle('shown');
+    };
+  }
+
   function go(hash, replace) {
     if (location.hash === hash) return render();
     replace ? history.replaceState(null, '', hash) : history.pushState(null, '', hash);
@@ -616,6 +735,7 @@
     if (h === '#errors') return screenErrors();
     if (h === '#numbers') return screenNumbers();
     if (h === '#words') return screenWords();
+    if (h === '#gestures') return screenGestures();
     if (h.startsWith('#signs/')) return screenSigns(h.slice(7));
     if (h === '#signs') return screenSigns(null);
     if (S.quiz && S.quiz.done) { S.quiz = null; save(); }

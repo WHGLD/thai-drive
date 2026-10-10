@@ -303,3 +303,50 @@ mark{background:var(--sign);color:var(--sign-ink);border-radius:4px;padding:0 3p
 @media (max-width:380px){.tabbar button{font-size:10.5px}}
 .seg+.chips{margin-top:12px}
 .offline-st{text-align:center;margin-top:4px}.offline-st .link-btn{font-size:inherit;padding:0}
+
+/* gestures */
+.sw-gest{font-size:30px;display:grid;place-items:center}
+.g-memo p{margin:6px 0 0;font-weight:500;font-size:14.5px;line-height:1.45}
+.g-memo .gm-h{display:block;font-weight:800}
+.g-legend{margin:10px 4px 8px}
+.lg-s{color:var(--bad);font-weight:700}.lg-g{color:var(--ok);font-weight:700}
+.g-card{padding:14px}
+.g-pics{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:center;margin-bottom:10px}
+.g-pics svg.g-fig{width:100%;height:150px}.g-pics svg.g-top{width:100%;height:130px}
+.g-fig .body{fill:var(--text)}
+.g-fig .leg{stroke:var(--text);stroke-width:9;stroke-linecap:round;fill:none}
+.arm{stroke:var(--muted);stroke-width:9;stroke-linecap:round;stroke-linejoin:round;fill:none}
+.arm.hot{stroke:var(--brand)}
+.g-fig .lbl{font-size:9px;fill:var(--muted);text-anchor:middle;font-weight:600}
+.g-top .road{fill:var(--surface-2);stroke:var(--line)}
+svg.g-fig,svg.g-top,svg.g-car{stroke:none}
+.g-top .ga{stroke-width:5;stroke-linecap:round;fill:none}
+.g-top .stop .ga{stroke:var(--bad)}.g-top .stop .gh{fill:var(--bad)}
+.g-top .go{opacity:.5}.g-top .go .ga{stroke:var(--ok)}.g-top .go .gh{fill:var(--ok)}
+.g-top .bar{stroke:var(--bad);stroke-width:5;stroke-linecap:round}
+.g-top .cop{fill:var(--text)}.g-top .nose{fill:var(--sign)}
+.g-name{font-weight:800;font-size:15.5px;line-height:1.3}
+.g-mean{margin-top:4px;font-size:14.5px;color:var(--brand);font-weight:600;line-height:1.4}
+.g-go{margin-top:4px}
+.g-law{margin-top:6px;font-size:12px;color:var(--faint)}
+.g-exam{display:inline-block;font-size:10.5px;font-weight:800;color:#fff;background:var(--brand);border-radius:999px;padding:2px 7px;vertical-align:2px;margin-left:2px}
+.g-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.g-grid .g-dcard:first-child{grid-column:1/-1}
+.g-dcard{padding:12px}
+svg.g-car{width:100%;height:100px;display:block;margin-bottom:6px}.g-grid .g-dcard:first-child svg.g-car{height:120px}
+.g-car .car{fill:#f2c230;stroke:#3a3a3a;stroke-width:1.5}
+.g-car .glass{fill:#bfe3f2}
+.g-car .head{fill:#2b2b2b}
+.g-car .tail{fill:#e0362c}.g-car .tyre{fill:#2b2b2b}.g-car .plate{fill:#fff;stroke:#3a3a3a;stroke-width:1}
+.g-car .hand{fill:var(--brand)}
+.g-car .hint{stroke:var(--sign);stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.anim-updown{transform-origin:104px 52px;animation:g-ud 1s ease-in-out infinite}
+.anim-fwd{transform-origin:132px 52px;animation:g-fw .8s ease-in-out infinite}
+.anim-left{transform-origin:132px 52px;animation:g-lf .9s ease-in-out infinite}
+@keyframes g-ud{0%,100%{transform:rotate(-16deg)}50%{transform:rotate(16deg)}}
+@keyframes g-fw{0%,100%{transform:rotate(25deg)}50%{transform:rotate(-55deg)}}
+@keyframes g-lf{0%,100%{transform:rotate(0)}50%{transform:rotate(-55deg)}}
+@media (prefers-reduced-motion:reduce){.anim-updown,.anim-fwd,.anim-left{animation-duration:2.4s}}
+.g-hidden [data-reveal]:not(.shown) .g-mean,.g-hidden [data-reveal]:not(.shown) .g-go,.g-hidden .g-dcard:not(.shown) .g-name{filter:blur(6px);user-select:none}
+.g-hidden .g-ans{filter:blur(6px)}
+.g-hidden [data-reveal]{cursor:pointer}
