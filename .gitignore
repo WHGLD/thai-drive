@@ -1,0 +1,12 @@
+# сборщик данных — запускается на Mac, телефону не нужен
+_build/
+
+# JetBrains (GoLand, WebStorm, PyCharm…)
+.idea/
+*.iml
+
+# macOS
+.DS_Store
+
+# Python
+__pycache__/

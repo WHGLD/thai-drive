@@ -302,3 +302,4 @@ mark{background:var(--sign);color:var(--sign-ink);border-radius:4px;padding:0 3p
 .wsheet .wex{margin-top:8px}
 @media (max-width:380px){.tabbar button{font-size:10.5px}}
 .seg+.chips{margin-top:12px}
+.offline-st{text-align:center;margin-top:4px}.offline-st .link-btn{font-size:inherit;padding:0}

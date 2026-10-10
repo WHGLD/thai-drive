@@ -138,7 +138,9 @@
           </button>`).join('')}
       </div>
       <div class="sticky-cta"><button class="btn" data-act="start" ${pool ? '' : 'disabled'}>Начать тест · ${Math.min(TEST_SIZE, pool)} из ${pool}</button></div>
-      <p class="muted small" style="text-align:center;margin-top:14px">База: ${D.questions.length} вопросов · обновлена ${fmtDate(D.built)}</p>`);
+      <p class="muted small" style="text-align:center;margin-top:14px">База: ${D.questions.length} вопросов · обновлена ${fmtDate(D.built)}</p>
+      <p class="offline-st muted small" id="offline-st"></p>`);
+    offlineStatus();
     v.onclick = e => {
       const t = e.target.closest('[data-topic]');
       if (t) { const s = new Set(selectedTopics()); s.has(t.dataset.topic) ? s.delete(t.dataset.topic) : s.add(t.dataset.topic); S.sel = [...s]; save(); return screenTest(); }
@@ -147,8 +149,29 @@
       if (a === 'start') startQuiz('topics', pickFrom(D.questions.filter(q => sel.has(q.t)).map(q => q.id)));
       if (a === 'resume') go('#quiz');
       if (a === 'drop') { S.quiz = null; save(); screenTest(); }
+      if (a === 'cache-imgs') { navigator.serviceWorker?.controller?.postMessage('cache-images'); const el = $('#offline-st'); if (el) el.textContent = 'Скачиваю картинки…'; }
     };
   }
+  /* офлайн: сколько картинок уже сохранено на телефоне */
+  async function offlineStatus() {
+    const el = $('#offline-st');
+    if (!el || !('caches' in window) || !navigator.serviceWorker || !location.protocol.startsWith('http')) return;
+    try {
+      const list = await (await fetch('data/images.json')).json();
+      const c = await caches.open('dlt-img-v2');
+      const have = new Set((await c.keys()).map(r => new URL(r.url).pathname));
+      const base = new URL('./', location.href).pathname;
+      const n = list.filter(p => have.has(base + p)).length;
+      const ready = !!navigator.serviceWorker.controller && n === list.length;
+      if (!$('#offline-st')) return;
+      el.innerHTML = ready ? `✓ Работает без интернета · сохранено ${n} картинок`
+        : `Офлайн: сохранено ${n} из ${list.length} картинок · <button class="link-btn" data-act="cache-imgs">Докачать</button>`;
+    } catch (_) { /* без интернета и без кэша — просто молчим */ }
+  }
+  if (navigator.serviceWorker) navigator.serviceWorker.addEventListener('controllerchange', () => { if ($('#offline-st')) offlineStatus(); });
+  if (navigator.serviceWorker) navigator.serviceWorker.addEventListener('message', ev => { if (/^images-/.test(ev.data) && location.hash.replace('#', '') in { '': 1, test: 1 }) offlineStatus(); });
+  // просим браузер не удалять сохранённое (на iPhone в Safari без установки может не сработать)
+  try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (_) {}
 
   function screenQuiz() {
     const z = S.quiz;
