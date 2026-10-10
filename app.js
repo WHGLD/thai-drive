@@ -459,7 +459,7 @@
       <div class="chips nchips">${nav.map(([id, t]) => `<button class="chip" data-go="${id}">${t}</button>`).join('')}</div>
       <p class="muted small legend">✅ закон · 🔑 ключ DLT · 🟡 первоисточник не найден</p>
       <div id="nbody" class="${hide ? 'hidden-nums' : ''}">
-      ${sec('exam', 'Экзамен', `<div class="card exam"><div class="ebar"><i style="width:${N.exam.pass / N.exam.total * 100}%"></i><span>${num(N.exam.pass)} из ${N.exam.total}</span></div><p class="small muted" style="margin:8px 0 0">${N.exam.total} вопросов, ${N.exam.sections} разделов · проходной балл 90% — можно ошибиться не больше чем в ${num(N.exam.total - N.exam.pass)} ✅</p></div>`)}
+      ${sec('exam', 'Экзамен', `<div class="card exam"><div class="ebar"><i style="width:${N.exam.pass / N.exam.total * 100}%"></i><span>${num(N.exam.pass)} из ${N.exam.total}</span></div><p class="small muted" style="margin:8px 0 0">${N.exam.total} вопросов · проходной балл 90% — можно ошибиться не больше чем в ${num(N.exam.total - N.exam.pass)} ✅</p></div>`)}
       ${sec('speed', 'Скорость, км/ч', speed, 'постановление 2021, действует с 07.2022 ✅')}
       ${sec('alcohol', 'Алкоголь', alcohol)}
       ${sec('dist', 'Расстояния', '<p class="muted small" style="margin:-4px 4px 8px">«…» в тексте — это число в кружке слева.</p>' + ladder + '<h3 class="nh3">Без расстояния — всегда</h3>' + rows(N.always, 'v'), 'от меньшего к большему')}
