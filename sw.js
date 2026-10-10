@@ -1,5 +1,5 @@
 /* Офлайн: при установке сохраняет приложение, данные и ВСЕ картинки (img/, список — data/images.json). */
-const VERSION = 'dd35e0cb';
+const VERSION = '50e6fbd9';
 const SHELL = `dlt-shell-${VERSION}`;
 const IMAGES = 'dlt-img-v2';          // картинки не меняются — кэш переживает обновления
 const FILES = ['./', 'index.html', 'style.css', 'app.js', 'data/data.js', 'data/numbers.js', 'data/images.json', 'manifest.webmanifest',
