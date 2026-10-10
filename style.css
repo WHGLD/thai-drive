@@ -261,3 +261,44 @@ body.in-quiz .tabbar{display:none}
 @media (max-width:360px){.tabbar button{font-size:10.5px}}
 .num.txt{font-weight:600}
 .nk b{font-weight:700}
+
+/* words */
+.seg{display:flex;background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:3px;gap:3px}
+.seg button{flex:1;padding:9px 0;border-radius:9px;font-weight:700;font-size:14.5px;color:var(--muted)}
+.seg button.on{background:var(--surface);color:var(--text);box-shadow:var(--shadow)}
+.wtop{margin-top:8px}
+.wtable{padding:0 14px}
+.wrow{display:flex;gap:12px;width:100%;text-align:left;padding:11px 0;border-top:1px solid var(--line);align-items:baseline;position:relative}
+.wrow:first-child{border-top:0}
+.we{flex:0 0 46%;font-weight:700;font-size:14.5px}
+.wr{flex:1;font-size:14.5px;color:var(--muted);padding-right:16px}
+.wk{position:absolute;right:0;top:11px;font-style:normal;color:var(--ok);font-weight:800}
+.hide-ru .wrow:not(.shown) .wr{filter:blur(6px);user-select:none}
+.wbar{display:flex;justify-content:space-between;align-items:center;margin:8px 2px 10px;font-size:14px;color:var(--muted)}
+.wnew{display:flex;align-items:center;gap:6px}
+.wnew input{width:18px;height:18px;accent-color:var(--brand)}
+.wprog{height:5px;border-radius:3px;background:var(--line);overflow:hidden}
+.wprog i{display:block;height:100%;background:var(--brand);transition:width .2s}
+.wcard{min-height:330px;background:var(--surface);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);padding:18px 18px 14px;display:flex;flex-direction:column;cursor:pointer;transition:transform .14s ease-in;transform-origin:center}
+.wcard.flip{transform:perspective(900px) rotateY(90deg)}
+.wcard.back{background:var(--brand-soft);border-color:transparent}
+.wsec{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.wen,.wru{font-size:27px;font-weight:800;line-height:1.2;margin:6px 0 14px;letter-spacing:-.01em}
+.wru{color:var(--brand)}
+.wex{background:var(--surface-2);border-radius:14px;padding:12px 14px;margin-top:auto}
+.back .wex{background:var(--surface)}
+.wex-h{font-size:11.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
+.wq{margin:0;font-size:15.5px;line-height:1.4;font-weight:600}
+.wx{margin:8px 0 0;font-size:13.5px;line-height:1.45;color:var(--muted)}
+.wopts{margin:8px 0 0;padding:0;list-style:none;font-size:14px;color:var(--muted)}
+.wopts li{padding:5px 0 5px 14px;position:relative;line-height:1.35}
+.wopts li::before{content:"";position:absolute;left:2px;top:12px;width:5px;height:5px;border-radius:50%;background:var(--faint)}
+.w-img{height:130px;margin-bottom:10px}
+mark{background:var(--sign);color:var(--sign-ink);border-radius:4px;padding:0 3px;font-weight:700}
+.whint{text-align:center;font-size:12px;color:var(--faint);margin-top:12px}
+.wbtns{margin-top:12px}
+.wbtns .btn:first-child{flex:0 0 56px}
+.wsheet hr{border:0;border-top:1px dashed var(--line);margin:16px 0}
+.wsheet .wex{margin-top:8px}
+@media (max-width:380px){.tabbar button{font-size:10.5px}}
+.seg+.chips{margin-top:12px}

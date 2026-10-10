@@ -1,5 +1,5 @@
 /* Офлайн: оболочка приложения и данные — из кэша; картинки кэшируются по мере просмотра. */
-const VERSION = 'f034c341';
+const VERSION = '9484f466';
 const SHELL = `dlt-shell-${VERSION}`;
 const IMAGES = 'dlt-img-v1';
 const FILES = ['./', 'index.html', 'style.css', 'app.js', 'data/data.js', 'data/numbers.js', 'manifest.webmanifest',

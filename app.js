@@ -409,7 +409,7 @@
         <p class="muted small" style="margin:10px 0 0">${N.speedZonesHint.map((h, i) => `<b>${i + 1}</b> — ${esc(h)}`).join(' · ')}</p>
       </div>
       <details class="card more"><summary>Другие ТС</summary>
-        <div class="tscroll"><table class="ntable"><thead><tr><th></th><th>1</th><th>2</th><th>3</th><th>4</th><th>Скоростная дорога</th></tr></thead>
+        <p class="muted small" style="margin:0 16px 8px">Колонки 1–4 — как на графике выше. «Скоростная дорога» (ทางพิเศษ): эстакада или тоннель / на уровне земли.</p><div class="tscroll"><table class="ntable"><thead><tr><th></th><th>1</th><th>2</th><th>3</th><th>4</th><th>Скоростная дорога</th></tr></thead>
         <tbody>${N.speedOther.map(r => `<tr><td>${esc(r[0])}</td>${r.slice(1).map(v => `<td>${num(v)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
       </details>
       <div class="card nlist">${N.speedNotes.map(([t, m]) => `<div class="nnote ${m === 'warn' ? 'warn' : ''}">${mk(m)} ${esc(t)}</div>`).join('')}</div>`;
@@ -418,9 +418,9 @@
     const ladder = `<div class="ladder">${N.ladder.map(st => `<div class="step"><div class="bub">${num(st.n)}<small>${st.u}</small></div><ul>${st.items.map(([t, m]) => `<li>${esc(t)} ${mk(m)}</li>`).join('')}</ul></div>`).join('')}</div>`;
     const timeline = `<div class="card memo">💡 ${esc(N.timelineMemo)}</div>
       <div class="ladder tl">${N.timeline.map(st => `<div class="step ${st.tone || ''}"><div class="bub">${num(st.n)}<small>${st.u}</small></div><ul>${st.items.map(([t, m]) => `<li>${esc(t)} ${mk(m)}</li>`).join('')}</ul></div>`).join('')}</div>
-      <h3 class="nh3">Права просрочены</h3>${rows(N.expired)}
+      <p class="muted small" style="margin:10px 4px 0">«…» в тексте — это число в кружке слева.</p><h3 class="nh3">Права просрочены</h3>${rows(N.expired)}
       <h3 class="nh3">Возраст ТС и водителя</h3>${rows(N.ages)}
-      ${rows(N.docs)}`;
+      ${rows(N.docs, 'v')}`;
     const kerbs = `<div class="card">${N.kerbs.map(k => `<div class="kerb"><span class="kstripe" style="--a:${k.c[0]};--b:${k.c[1]}"></span>
         <div class="kt"><b>${esc(k.name)}</b><span>${esc(k.txt)}</span></div>
         <span class="kyn ${k.stop ? 'y' : 'n'}">${k.stop ? '✓' : '✕'}<small>стоп</small></span><span class="kyn ${k.park ? 'y' : 'n'}">${k.park ? '✓' : '✕'}<small>стоянка</small></span></div>`).join('')}</div>`;
@@ -436,7 +436,7 @@
       ${sec('exam', 'Экзамен', `<div class="card exam"><div class="ebar"><i style="width:${N.exam.pass / N.exam.total * 100}%"></i><span>${num(N.exam.pass)} из ${N.exam.total}</span></div><p class="small muted" style="margin:8px 0 0">${N.exam.total} вопросов, ${N.exam.sections} разделов · проходной балл 90% — можно ошибиться не больше чем в ${num(N.exam.total - N.exam.pass)} ✅</p></div>`)}
       ${sec('speed', 'Скорость, км/ч', speed, 'постановление 2021, действует с 07.2022 ✅')}
       ${sec('alcohol', 'Алкоголь', alcohol)}
-      ${sec('dist', 'Расстояния', ladder + '<h3 class="nh3">Без расстояния — всегда</h3>' + rows(N.always, 'v'), 'от меньшего к большему')}
+      ${sec('dist', 'Расстояния', '<p class="muted small" style="margin:-4px 4px 8px">«…» в тексте — это число в кружке слева.</p>' + ladder + '<h3 class="nh3">Без расстояния — всегда</h3>' + rows(N.always, 'v'), 'от меньшего к большему')}
       ${sec('time', 'Секунды и прочее', rows(N.seconds) + rows(N.misc))}
       ${sec('terms', 'Сроки и документы', timeline)}
       ${sec('kerb', 'Цвет бордюра', kerbs)}
@@ -452,6 +452,134 @@
   }
 
   /* ---------- router ---------- */
+  /* ---------- words (eng/glossary-en-ru.md) ---------- */
+  const W = D.glossary || [];
+  const W_SECS = [...new Set(W.map(w => w.s))];
+  const wKnown = w => !!(S.wk && S.wk[w.en]);
+  const setKnown = (w, on) => { S.wk = S.wk || {}; if (on) S.wk[w.en] = 1; else delete S.wk[w.en]; save(); };
+  // подсветка фраз в тексте (без учёта регистра), всё остальное экранируется
+  function hlText(text, phrases) {
+    text = String(text || '');
+    const ps = (phrases || []).filter(Boolean).sort((a, b) => b.length - a.length).map(p => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    if (!ps.length) return esc(text);
+    return text.split(new RegExp('(' + ps.join('|') + ')', 'gi')).map((part, i) => i % 2 ? `<mark>${esc(part)}</mark>` : esc(part)).join('');
+  }
+  function wordFront(w) {
+    const e = w.ex || {};
+    let ex = '';
+    if (e.id && Q[e.id]) {
+      const q = Q[e.id];
+      ex = `<div class="wex"><div class="wex-h">Вопрос из базы · ${esc(TOPIC[q.t]?.ru || '')}</div>
+        ${img(q.img, 'q-img w-img', true)}
+        <p class="wq">${hlText(q.q, e.hl)}</p>
+        ${q.o.some(Boolean) ? `<ul class="wopts">${q.o.map(o => o ? `<li>${hlText(o, e.hl)}</li>` : '').join('')}</ul>` : ''}</div>`;
+    } else if (e.q) {
+      ex = `<div class="wex"><div class="wex-h">Пример в стиле экзамена</div><p class="wq">${hlText(e.q, [])}</p></div>`;
+    }
+    return `<div class="wsec">${esc(w.s)}</div><div class="wen">${esc(w.en)}</div>${ex}<div class="whint">нажмите, чтобы перевернуть</div>`;
+  }
+  function wordBack(w) {
+    const e = w.ex || {};
+    let ex = '';
+    if (e.id && Q[e.id]) {
+      const q = Q[e.id], ans = q.o[q.c];
+      ex = `<div class="wex"><div class="wex-h">Ответ на вопрос</div><p class="wq">${ans ? esc(ans) : '(ответ — картинка)'}</p>${q.x ? `<p class="wx">${esc(q.x)}</p>` : ''}</div>`;
+    } else if (e.q) {
+      ex = `<div class="wex"><div class="wex-h">Ответ</div><p class="wq">${esc(e.a)}</p><p class="wx">${esc(e.ru)}</p></div>`;
+    }
+    return `<div class="wsec">${esc(w.en)}</div><div class="wru">${esc(w.ru)}</div>${ex}`;
+  }
+  let wQuery = '', wDeck = null;
+  function screenWords() {
+    S.wMode = S.wMode || 'table';
+    const sec = W_SECS.includes(S.wSec) ? S.wSec : 'all';
+    const inSec = W.filter(w => sec === 'all' || w.s === sec);
+    const known = W.filter(wKnown).length;
+    chrome({ title: 'Слова', subtitle: `${W.length} терминов · знаю ${known}`, tab: 'words' });
+    if (!W.length) { view('<div class="empty"><div class="big">📖</div><b>Словарь пуст</b><p class="small">Заполните eng/glossary-en-ru.md и пересоберите данные.</p></div>'); return; }
+    const chips = `<div class="chips">${['all', ...W_SECS].map(id => { const n = id === 'all' ? W.length : W.filter(w => w.s === id).length;
+      return `<button class="chip ${sec === id ? 'on' : ''}" data-sec="${esc(id)}">${id === 'all' ? 'Все' : esc(id)}<i>${n}</i></button>`; }).join('')}</div>`;
+    const seg = `<div class="seg"><button class="${S.wMode === 'table' ? 'on' : ''}" data-mode="table">Таблица</button><button class="${S.wMode === 'cards' ? 'on' : ''}" data-mode="cards">Карточки</button></div>`;
+    if (S.wMode === 'table') {
+      const hide = !!S.wHide;
+      view(`${seg}
+        <label class="search">${ICON.search}<input id="wq" type="search" placeholder="Поиск: lane, обочина…" autocomplete="off"></label>
+        ${chips}
+        <div class="card ntop wtop"><div><b>Скрыть перевод</b><span class="muted small">нажмите на строку, чтобы открыть</span></div>
+          <button class="switch ${hide ? 'on' : ''}" data-act="whide" aria-pressed="${hide}"><i></i></button></div>
+        <div id="wres"></div>`);
+      const inp = $('#wq'); inp.value = wQuery;
+      const draw = () => {
+        const q = wQuery.trim().toLowerCase();
+        const list = inSec.filter(w => !q || (w.en + ' ' + w.ru).toLowerCase().includes(q));
+        const groups = W_SECS.map(s => [s, list.filter(w => w.s === s)]).filter(g => g[1].length);
+        $('#wres').innerHTML = list.length ? groups.map(([s, ws]) => `<h3 class="nh3">${esc(s)}</h3>
+          <div class="card wtable ${hide ? 'hide-ru' : ''}">${ws.map(w => `<button class="wrow ${wKnown(w) ? 'known' : ''}" data-w="${W.indexOf(w)}">
+            <span class="we">${esc(w.en)}</span><span class="wr">${esc(w.ru)}</span>${wKnown(w) ? '<i class="wk" title="Знаю">✓</i>' : ''}</button>`).join('')}</div>`).join('')
+          : '<p class="muted">Ничего не найдено</p>';
+      };
+      draw();
+      inp.oninput = () => { wQuery = inp.value; draw(); };
+    } else {
+      const onlyNew = S.wNew !== false;
+      const pool = inSec.filter(w => !onlyNew || !wKnown(w));
+      const sig = sec + '|' + onlyNew;
+      if (!wDeck || wDeck.sig !== sig) wDeck = { sig, ids: shuffle(pool.map(w => W.indexOf(w))), i: 0, back: false };
+      wDeck.ids = wDeck.ids.filter((id, pos) => pos < wDeck.i || pool.includes(W[id]));
+      const d = wDeck, cur = W[d.ids[d.i]];
+      view(`${seg}${chips}
+        <div class="wbar"><label class="wnew"><input type="checkbox" data-act="wnew" ${onlyNew ? 'checked' : ''}> только неизученные</label>
+          <button class="link-btn" data-act="shuffle">Перемешать</button></div>
+        ${cur ? `
+        <div class="wprog"><i style="width:${(d.i) / d.ids.length * 100}%"></i></div>
+        <p class="muted small" style="text-align:center;margin:6px 0 10px">${d.i + 1} из ${d.ids.length}</p>
+        <div class="wcard ${d.back ? 'back' : ''}" id="wcard" role="button" tabindex="0">${d.back ? wordBack(cur) : wordFront(cur)}</div>
+        <div class="btn-row wbtns">
+          <button class="btn ghost" data-act="prev" ${d.i ? '' : 'disabled'} aria-label="Назад">←</button>
+          <button class="btn ghost" data-act="again">Ещё учу</button>
+          <button class="btn" data-act="know">Знаю ✓</button>
+        </div>` : `<div class="empty"><div class="big">🎉</div><b>${pool.length ? 'Колода пройдена' : 'Все слова в этом разделе изучены'}</b>
+          <p class="small">${pool.length ? `Пройдено ${plural(d.ids.length, 'карточка', 'карточки', 'карточек')}.` : 'Снимите «только неизученные», чтобы повторить.'}</p>
+          ${pool.length ? '<button class="btn" data-act="shuffle" style="margin-top:14px">Ещё раз</button>' : ''}</div>`}`);
+    }
+    $('#view').onclick = e => {
+      const m = e.target.closest('[data-mode]'); if (m) { S.wMode = m.dataset.mode; save(); return screenWords(); }
+      const c = e.target.closest('[data-sec]'); if (c) { S.wSec = c.dataset.sec; save(); return screenWords(); }
+      const a = e.target.closest('[data-act]')?.dataset.act;
+      if (a === 'whide') { S.wHide = !S.wHide; save(); const y = window.scrollY; screenWords(); window.scrollTo(0, y); return; }
+      if (a === 'wnew') { S.wNew = e.target.checked; save(); return screenWords(); }
+      if (a === 'shuffle') { wDeck = null; return screenWords(); }
+      if (wDeck && (a === 'know' || a === 'again')) {
+        const id = wDeck.ids[wDeck.i];
+        setKnown(W[id], a === 'know');
+        if (a === 'again' && S.wNew !== false) wDeck.ids.push(id);  // «ещё учу» — карточка вернётся в конце колоды
+        wDeck.i++; wDeck.back = false; return screenWords();
+      }
+      if (wDeck && a === 'prev') { wDeck.i = Math.max(0, wDeck.i - 1); wDeck.back = false; return screenWords(); }
+      if (e.target.closest('[data-zoom]')) return;
+      const card = e.target.closest('#wcard');
+      if (card && wDeck) {
+        wDeck.back = !wDeck.back;
+        card.classList.add('flip');
+        setTimeout(() => { const cur = W[wDeck.ids[wDeck.i]]; card.innerHTML = wDeck.back ? wordBack(cur) : wordFront(cur); card.classList.toggle('back', wDeck.back); card.classList.remove('flip'); }, 140);
+        return;
+      }
+      const r = e.target.closest('[data-w]'); if (r) openWord(W[+r.dataset.w], r);
+    };
+  }
+  function openWord(w, row) {
+    if (S.wHide && row && !row.classList.contains('shown')) { row.classList.add('shown'); return; }
+    const draw = () => {
+      $('#sheet-body').innerHTML = `<div class="wsheet">${wordFront(w).replace(/<div class="whint">.*?<\/div>/, '')}<hr>${wordBack(w)}</div>
+        <div class="btn-row" style="margin-top:16px">
+          <button class="btn ghost" data-wk>${wKnown(w) ? '✓ Знаю — убрать' : 'Отметить «знаю»'}</button>
+          <button class="btn ghost" data-close>Закрыть</button></div>`;
+      $('#sheet-body').querySelector('[data-wk]').onclick = () => { setKnown(w, !wKnown(w)); draw(); };
+    };
+    draw();
+    $('#sheet').hidden = false;
+  }
+
   function go(hash, replace) {
     if (location.hash === hash) return render();
     replace ? history.replaceState(null, '', hash) : history.pushState(null, '', hash);
@@ -464,6 +592,7 @@
     if (h === '#result') return screenResult();
     if (h === '#errors') return screenErrors();
     if (h === '#numbers') return screenNumbers();
+    if (h === '#words') return screenWords();
     if (h.startsWith('#signs/')) return screenSigns(h.slice(7));
     if (h === '#signs') return screenSigns(null);
     if (S.quiz && S.quiz.done) { S.quiz = null; save(); }
@@ -486,7 +615,7 @@
     const z = e.target.closest('[data-zoom]');
     if (z && !z.closest('.opt')) { const m = $('#zoom'); m.querySelector('img').src = z.src; m.hidden = false; return; }
     if (e.target.closest('#zoom')) { $('#zoom').hidden = true; return; }
-    if (e.target.id === 'sheet' || e.target.closest('[data-close]')) $('#sheet').hidden = true;
+    if (e.target.id === 'sheet' || e.target.closest('[data-close]')) { $('#sheet').hidden = true; if (location.hash === '#words') { const y = window.scrollY; screenWords(); window.scrollTo(0, y); } }
   });
 
   render();
