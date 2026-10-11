@@ -75,11 +75,15 @@
   }
 
   /* ---------- quiz model ---------- */
+  // размер теста выбирается на экране «Тест»: число из SIZES или 'all' — все вопросы пула
+  const SIZES = [10, 15, 25, 50];
+  const testSize = () => S.size === 'all' || SIZES.includes(S.size) ? S.size : TEST_SIZE;
+  const sizeOf = pool => testSize() === 'all' ? pool : Math.min(testSize(), pool);
   function pickFrom(pool) {
+    // сначала вопросы, которых не было в последних тестах, потом недавние — если свежих не хватает
     const recent = new Set(S.recent);
-    let cand = pool.filter(id => !recent.has(id));
-    if (cand.length < TEST_SIZE) cand = pool;
-    return shuffle(cand).slice(0, TEST_SIZE);
+    const fresh = pool.filter(id => !recent.has(id)), seen = pool.filter(id => recent.has(id));
+    return shuffle([...shuffle(fresh), ...shuffle(seen)].slice(0, sizeOf(pool.length)));
   }
   function startQuiz(mode, ids) {
     if (!ids.length) return;
@@ -111,6 +115,7 @@
     const errs = activeErrors();
     const errBy = {}; errs.forEach(e => { const t = Q[e.id].t; errBy[t] = (errBy[t] || 0) + 1; });
     const pool = D.questions.filter(q => sel.has(q.t)).length;
+    const size = testSize();
     const last = S.h.slice(-10);
     const avg = last.length ? Math.round(last.reduce((s, h) => s + h.ok / h.n, 0) / last.length * 100) + '%' : '—';
     const resume = S.quiz && S.quiz.items.some(it => it.a === null)
@@ -118,7 +123,7 @@
          <div class="btn-row"><button class="btn" data-act="resume">Продолжить</button><button class="btn ghost" data-act="drop">Сбросить</button></div></div>` : '';
     const v = view(`
       <section class="card hero"><div class="diamond"></div>
-        <h2>${TEST_SIZE} случайных вопросов</h2>
+        <h2>${size === 'all' ? 'Все вопросы выбранных тем' : `${size} случайных вопросов`}</h2>
         <p>Вопросы на английском, ответ проверяется сразу. Для сдачи нужно 90%.</p>
         <div class="stats">
           <div class="stat"><b>${S.h.length}</b><span>тестов</span></div>
@@ -127,6 +132,9 @@
         </div>
       </section>
       ${resume}
+      <div class="section-h"><span>Сколько вопросов</span></div>
+      <div class="chips qsize">${[...SIZES, 'all'].map(s => `<button class="chip ${size === s ? 'on' : ''}" data-size="${s}">${s === 'all' ? `Все<i>${pool}</i>` : s}</button>`).join('')}</div>
+      <p class="muted small qsize-hint">50 — как на экзамене. «Все» — выбранные темы целиком.</p>
       <div class="section-h"><span>Темы</span><button data-act="all">${sel.size === D.topics.length ? 'Снять все' : 'Выбрать все'}</button></div>
       <div class="card topics" style="padding:0">
         ${D.topics.map(t => `
@@ -137,13 +145,15 @@
             <span class="cnt">${t.n}</span>
           </button>`).join('')}
       </div>
-      <div class="sticky-cta"><button class="btn" data-act="start" ${pool ? '' : 'disabled'}>Начать тест · ${Math.min(TEST_SIZE, pool)} из ${pool}</button></div>
+      <div class="sticky-cta"><button class="btn" data-act="start" ${pool ? '' : 'disabled'}>Начать тест · ${sizeOf(pool)} из ${pool}</button></div>
       <p class="muted small" style="text-align:center;margin-top:14px">База: ${D.questions.length} вопросов · обновлена ${fmtDate(D.built)}</p>
       <p class="offline-st muted small" id="offline-st"></p>`);
     offlineStatus();
     v.onclick = e => {
       const t = e.target.closest('[data-topic]');
       if (t) { const s = new Set(selectedTopics()); s.has(t.dataset.topic) ? s.delete(t.dataset.topic) : s.add(t.dataset.topic); S.sel = [...s]; save(); return screenTest(); }
+      const z = e.target.closest('[data-size]');
+      if (z) { S.size = z.dataset.size === 'all' ? 'all' : +z.dataset.size; save(); const y = window.scrollY; screenTest(); window.scrollTo(0, y); return; }
       const a = e.target.closest('[data-act]')?.dataset.act;
       if (a === 'all') { S.sel = sel.size === D.topics.length ? [] : D.topics.map(x => x.id); save(); screenTest(); }
       if (a === 'start') startQuiz('topics', pickFrom(D.questions.filter(q => sel.has(q.t)).map(q => q.id)));
@@ -285,7 +295,7 @@
       <section class="card">
         <b>Повторить ошибки</b>
         <p class="muted small" style="margin:4px 0 12px">Вопрос уходит из списка после ${RESOLVE_STREAK} верных ответов подряд (кружки внизу карточки).</p>
-        <button class="btn warn" data-act="quiz">Тест из ошибок · ${Math.min(TEST_SIZE, list.length)}${errFilter !== 'all' ? ' · ' + esc(TOPIC[errFilter].ru) : ''}</button>
+        <button class="btn warn" data-act="quiz">Тест из ошибок · ${sizeOf(list.length)}${errFilter !== 'all' ? ' · ' + esc(TOPIC[errFilter].ru) : ''}</button>
       </section>
       <div class="chips" style="margin-top:14px">
         <button class="chip ${errFilter === 'all' ? 'on' : ''}" data-f="all">Все<i>${errs.length}</i></button>
@@ -1014,7 +1024,7 @@
       ${G.retake.map(r => `<div class="card">
         <b>Пройти тему заново: ${esc(TOPIC[r.topic]?.ru || r.topic)}</b>
         <p class="muted small" style="margin:4px 0 10px">${esc(r.why)}. Сначала прочитать: ${r.read.map(id => `<a href="#" data-trap="${id}">${esc(G.traps.find(t => t.id === id)?.title || id)}</a>`).join(', ')}.</p>
-        <button class="btn" data-retake="${r.topic}">Тест по теме · ${TEST_SIZE} вопросов</button></div>`).join('')}
+        <button class="btn" data-retake="${r.topic}">Тест по теме · ${plural(sizeOf(D.questions.filter(q => q.t === r.topic).length), 'вопрос', 'вопроса', 'вопросов')}</button></div>`).join('')}
       <div class="card" style="margin-top:10px"><b>Мои ошибки</b>
         <p class="muted small" style="margin:4px 0 10px">${errN ? `Сейчас ${plural(errN, 'вопрос', 'вопроса', 'вопросов')} на повтор — включая отмеченные 📌 в ваших заметках.` : 'Активных ошибок нет.'}</p>
         <button class="btn ghost" data-go-hash="#errors">Открыть «Ошибки»</button></div>
