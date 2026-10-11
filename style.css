@@ -321,6 +321,38 @@ body.in-quiz .tabbar{display:none}
 .sp-table td small{display:block;font-size:10.5px;font-weight:600}
 .sp-table td.ok{color:var(--ok)}.sp-table td.bad{color:var(--bad);background:var(--bad-soft)}
 @media (prefers-reduced-motion:reduce){.sg-card.anim,.sg-bin.anim{animation:none}}
+.nseg button{font-size:13.5px}
+/* парковка: сцена — картинка улицы, цвета фиксированные в обеих темах */
+.pk-task{text-align:center;padding:12px 14px}
+.pk-task small{display:block;font-size:12.5px;font-weight:600;color:var(--muted)}
+.pk-task b{display:block;font-size:17px;line-height:1.3;margin-top:2px}
+.pk-scene{max-width:300px;margin:10px auto 0}
+.pk-scene svg{display:block;width:100%;height:auto;border-radius:14px;touch-action:none;cursor:ns-resize;user-select:none;-webkit-user-select:none}
+.pk-road{fill:#5F5E5A;stroke:none}
+.pk-walk{fill:#D3D1C7;stroke:none}
+.pk-mid{stroke:#F1EFE8;stroke-width:2;stroke-dasharray:10 9;opacity:.7}
+.pk-kerb{stroke:#888780;stroke-width:3}
+.pk-tick{stroke:#888780;stroke-width:1.2}
+.pk-emo{font-size:26px;text-anchor:middle;stroke:none;fill:#2C2C2A}
+.pk-hyd{fill:#E24B4A;stroke:#A32D2D;stroke-width:1}
+.pk-pole{fill:#5F5E5A;stroke:none}
+.pk-zebra{fill:#F1EFE8;stroke:none}
+.pk-drive{fill:#888780;stroke:none}
+.pk-island{fill:#D3D1C7;stroke:#F1EFE8;stroke-width:2}
+.pk-rail{stroke:#2C2C2A;stroke-width:3}
+.pk-sleeper{fill:#8a6a48;stroke:none}
+.pk-zone{fill:rgba(226,75,74,.4);stroke:#F09595;stroke-width:1.5;stroke-dasharray:5 4}
+.pk-zl{fill:#fff;stroke:none;font-size:13px;font-weight:800;text-anchor:middle}
+.pk-gap{stroke:#F1EFE8;stroke-width:1.5;fill:none}
+.pk-car .body{fill:#378ADD;stroke:#0C447C;stroke-width:1.5}
+.pk-car .glass{fill:#0C447C;stroke:none}
+.pk-car.ok .body{stroke:#97C459;stroke-width:3}
+.pk-car.far .body{stroke:#f2b705;stroke-width:3}
+.pk-car.bad .body{stroke:#E24B4A;stroke-width:3}
+.pk-rule{text-align:center;margin:-6px 4px 12px}
+.sg-fb.far,.sp-read.far,.sp-table td.far{color:#8a6100}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .sg-fb.far,:root:not([data-theme="light"]) .sp-read.far,:root:not([data-theme="light"]) .sp-table td.far{color:#f2c95a}}
+.pk-sum td:not(:first-child){white-space:nowrap}
 
 /* words */
 .seg{display:flex;background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:3px;gap:3px}

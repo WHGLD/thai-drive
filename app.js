@@ -416,7 +416,8 @@
   const MARK = { ok: ['✅', 'закон'], key: ['🔑', 'ключ DLT'], unv: ['🟡', 'не подтверждено'], warn: ['⚠️', 'внимание'] };
   const mk = m => m && MARK[m] ? `<i class="mk" title="${MARK[m][1]}">${MARK[m][0]}</i>` : '';
   const num = (v, cls = '') => `<span class="num ${cls}" data-num>${esc(v)}</span>`;
-  const N_MODES = [['sheet', 'Шпаргалка', 'Сроки, расстояния, скорости — для запоминания'], ['sort', 'Расстояния', 'Разложите расстояния по полкам'], ['speed', 'Скорость', 'Поставьте стрелку на нужную скорость']];
+  const N_MODES = [['sheet', 'Шпаргалка', 'Сроки, расстояния, скорости — для запоминания'], ['sort', 'Полки', 'Разложите расстояния по полкам'],
+    ['park', 'Парковка', 'Встаньте как можно ближе — но не в запретной зоне'], ['speed', 'Скорость', 'Поставьте стрелку на нужную скорость']];
   // перерисовать экран, не сбрасывая прокрутку
   const redrawNumbers = () => { const y = window.scrollY; screenNumbers(); window.scrollTo(0, y); };
   function screenNumbers() {
@@ -424,8 +425,8 @@
     const mode = N_MODES.find(m => m[0] === S.nMode) || N_MODES[0];
     chrome({ title: 'Цифры', subtitle: mode[2], tab: 'numbers' });
     if (!N) { view('<div class="empty">Нет данных</div>'); return; }
-    const seg = `<div class="seg">${N_MODES.map(([id, t]) => `<button class="${mode[0] === id ? 'on' : ''}" data-nmode="${id}">${t}</button>`).join('')}</div>`;
-    const handle = { sheet: numSheet, sort: numSort, speed: numSpeed }[mode[0]](N, seg);
+    const seg = `<div class="seg nseg">${N_MODES.map(([id, t]) => `<button class="${mode[0] === id ? 'on' : ''}" data-nmode="${id}">${t}</button>`).join('')}</div>`;
+    const handle = { sheet: numSheet, sort: numSort, park: numPark, speed: numSpeed }[mode[0]](N, seg);
     $('#view').onclick = e => {
       const m = e.target.closest('[data-nmode]');
       if (m) { S.nMode = m.dataset.nmode; save(); return screenNumbers(); }
@@ -544,6 +545,115 @@
       const fb = $('#sgfb'); fb.className = 'sg-fb bad'; fb.textContent = `Не ${set.bins[bi]} — попробуйте другую полку`;
       $('#sgmeta').textContent = `${g.i + 1} из ${g.order.length} · ${plural(g.miss, 'ошибка', 'ошибки', 'ошибок')}`;
       try { navigator.vibrate?.(40); } catch (_) {}
+    };
+  }
+
+  /* игра «Парковка»: машина едет вверх вдоль левого бордюра; встать как можно ближе к предмету, но не в запретной зоне.
+     Координаты — метры вдоль дороги от низа сцены (s растёт по ходу движения, вверх по экрану). */
+  let nPark = null;
+  // сцена 34 м, 9 px на метр, предмет в 6 м от края (зоны 3 и 5 м видны целиком), машина 4,5 м, штраф за стоянку — до 500 ฿
+  const PK = { span: 34, px: 9, edge: 6, car: 4.5, start: 18, fine: 500 };
+  const pkR = v => Math.round(v * 10) / 10;
+  const pkY = s => pkR((PK.span - s) * PK.px);
+  // предмет: не доезжая — у верха сцены (машина подъезжает снизу), проехав — у низа (машина сверху)
+  const pkObj = t => { const s0 = t.side === 'before' ? PK.span - PK.edge - t.len : PK.edge; return [s0, s0 + t.len]; };
+  const pkMax = t => { const [s0, s1] = pkObj(t); return Math.floor(t.side === 'before' ? s0 - PK.car : PK.span - PK.car - s1); };
+  const pkNeed = t => t.zone[t.side === 'before' ? 0 : 1];
+  const pkRes = (t, d) => d === pkNeed(t) ? 'ok' : d > pkNeed(t) ? 'far' : 'bad';
+  function pkThing(kind, s0, s1) {
+    const top = pkY(s1), h = pkR((s1 - s0) * PK.px), mid = pkR(top + h / 2);
+    const emo = (e, x) => `<text x="${x}" y="${pkR(mid + 9)}" class="pk-emo">${e}</text>`;
+    const across = (x0, x1, step, w, cls) => { let o = ''; for (let x = x0; x < x1; x += step) o += `<rect x="${x}" y="${top}" width="${w}" height="${h}" class="${cls}"/>`; return o; };
+    switch (kind) {
+      case 'hydrant': return `<rect x="36" y="${pkR(mid - 12)}" width="18" height="24" rx="7" class="pk-hyd"/><rect x="31" y="${pkR(mid - 3)}" width="28" height="7" rx="3.5" class="pk-hyd"/>`;
+      case 'mailbox': return emo('📮', 40);
+      case 'bus': return `<rect x="52" y="${pkR(mid - 1)}" width="11" height="2" class="pk-pole"/>` + emo('🚏', 36);
+      case 'light': return `<rect x="52" y="${pkR(mid - 1)}" width="11" height="2" class="pk-pole"/>` + emo('🚦', 36);
+      case 'crossing': return across(70, 200, 13, 7, 'pk-zebra') + emo('🚶', 30);
+      case 'drive': return `<rect x="0" y="${top}" width="65" height="${h}" class="pk-drive"/>` + emo('🏠', 22);
+      case 'junction': return `<rect x="0" y="${top}" width="66" height="${h}" class="pk-road"/><line x1="0" y1="${mid}" x2="62" y2="${mid}" class="pk-mid"/>`;
+      case 'island': return `<rect x="123" y="-12" width="20" height="${pkR(pkY(s0) + 12)}" rx="10" class="pk-island"/>`;
+      case 'rail': return across(0, 280, 11, 5, 'pk-sleeper') + `<line x1="0" y1="${pkR(top + h * .3)}" x2="280" y2="${pkR(top + h * .3)}" class="pk-rail"/><line x1="0" y1="${pkR(top + h * .7)}" x2="280" y2="${pkR(top + h * .7)}" class="pk-rail"/>`;
+    }
+    return '';
+  }
+  function parkSvg(t, d, res) {
+    const W = 280, H = PK.span * PK.px, [s0, s1] = pkObj(t);
+    const front = t.side === 'before' ? s0 - d : s1 + d + PK.car;
+    let o = `<rect width="${W}" height="${H}" class="pk-road"/><rect width="62" height="${H}" class="pk-walk"/><rect x="202" width="78" height="${H}" class="pk-walk"/>
+      <line x1="133" y1="0" x2="133" y2="${H}" class="pk-mid"/>`;
+    for (let s = 0; s <= PK.span; s++) o += `<line x1="${s % 5 ? 55 : 48}" y1="${pkY(s)}" x2="62" y2="${pkY(s)}" class="pk-tick"/>`;  // метки на бордюре: 1 м, каждые 5 м длиннее
+    o += `<line x1="63" y1="0" x2="63" y2="${H}" class="pk-kerb"/>` + pkThing(t.kind, s0, s1);
+    if (res) {  // запретная зона — только после «Встать»
+      const zone = (a, b, n) => { a = Math.max(0, a); b = Math.min(PK.span, b);
+        return n ? `<rect x="66" y="${pkY(b)}" width="62" height="${pkR((b - a) * PK.px)}" class="pk-zone"/><text x="97" y="${pkR((pkY(a) + pkY(b)) / 2 + 5)}" class="pk-zl">${n} м</text>` : ''; };
+      o += zone(s0 - t.zone[0], s0, t.zone[0]) + zone(s1, s1 + t.zone[1], t.zone[1]);
+    }
+    const [m0, m1] = t.side === 'before' ? [front, s0] : [s1, front - PK.car];  // промежуток между машиной и предметом
+    if (m1 > m0) o += `<path d="M114 ${pkY(m1)}V${pkY(m0)}M109 ${pkY(m1)}H119M109 ${pkY(m0)}H119" class="pk-gap"/>`;
+    const y = pkY(front);
+    return o + `<g class="pk-car ${res || ''}"><rect x="72" y="${y}" width="26" height="${pkR(PK.car * PK.px)}" rx="6" class="body"/>
+      <rect x="75" y="${pkR(y + 6)}" width="20" height="9" rx="2" class="glass"/><rect x="76" y="${pkR(y + 30)}" width="18" height="6" rx="2" class="glass"/></g>`;
+  }
+  function numPark(N, seg) {
+    const T = N.park;
+    if (!nPark) nPark = { order: shuffle([...T.keys()]), i: 0, d: null, res: [], checked: false };
+    const g = nPark, done = g.i >= g.order.length, t = T[g.order[g.i]];
+    const fines = () => g.res.filter(x => x.r === 'bad').length * PK.fine;
+    const baht = n => n.toLocaleString('ru-RU') + ' ฿';
+    if (done) {
+      const ok = g.res.filter(x => x.r === 'ok').length;
+      view(`${seg}
+        <div class="card sg-done"><div class="big">${ok === g.res.length ? '🎉' : fines() ? '🧾' : '🅿️'}</div><b>Идеально: ${ok} из ${g.res.length}</b>
+          <p class="muted small">${fines() ? `Штрафы: ${baht(fines())}` : 'Без штрафов'}${g.rec ? ' · новый рекорд!' : g.prev ? ` · лучший: ${g.prev.ok} из ${g.prev.n}` : ''}</p>
+          <button class="btn" data-act="pk-again">Ещё раз</button></div>
+        <h3 class="nh3">Стоянка запрещена ближе чем</h3>
+        <div class="card sp-sum"><table class="ntable sp-table pk-sum"><thead><tr><th></th><th>Запрет</th><th>Вы</th></tr></thead>
+          <tbody>${g.res.map(x => { const q = T[x.ti]; return `<tr><td>${esc(q.name)}</td><td>${pkNeed(q)} м</td><td class="${x.r}">${x.d} м</td></tr>`; }).join('')}</tbody></table>
+          <p class="muted small" style="margin:8px 0 0">Зелёным — ровно на границе, жёлтым — законно, но можно было ближе, красным — штраф. Все расстояния — LTA ст. 57.</p></div>`);
+    } else {
+      if (g.d == null) g.d = Math.min(PK.start, pkMax(t));
+      const r = g.checked ? pkRes(t, g.d) : '', need = pkNeed(t);
+      const msg = { ok: `✓ Идеально — ровно ${need} м`, far: `Законно, но можно было ближе — запрет ${need} м`, bad: `✕ Штраф до ${baht(PK.fine)} — ближе ${need} м стоять нельзя` }[r];
+      view(`${seg}
+        <div class="wprog sg-prog"><i style="width:${g.i / g.order.length * 100}%"></i></div>
+        <p class="muted small sg-meta">${g.i + 1} из ${g.order.length}${fines() ? ` · штрафы ${baht(fines())}` : ''}</p>
+        <div class="card pk-task"><small>Встаньте как можно ближе</small><b>${esc(t.to)}</b></div>
+        <div class="pk-scene"><svg id="pksvg" viewBox="0 0 280 ${PK.span * PK.px}" aria-label="Улица сверху: машина у левого бордюра">${parkSvg(t, g.d, r)}</svg></div>
+        <div class="sp-read ${r}"><span id="pkv">${g.d}</span><small>м до предмета</small></div>
+        ${g.checked ? `<p class="sg-fb ${r}">${msg}</p><p class="muted small pk-rule">${esc(t.rule)} · ст. 57</p>
+          <button class="btn" data-act="pk-next">${g.i + 1 < g.order.length ? 'Дальше' : 'Итог'}</button>`
+        : `<div class="btn-row sp-ctl"><button class="btn ghost" data-act="pk-dec" aria-label="Ближе на 1 м">−</button><button class="btn" data-act="pk-check">Встать</button><button class="btn ghost" data-act="pk-inc" aria-label="Дальше на 1 м">+</button></div>
+          <p class="muted small sp-note">Тяните машину вдоль бордюра или нажимайте − и +. Шаг — 1 м.</p>`}`);
+      const svg = $('#pksvg');
+      g.setD = d => { d = Math.max(0, Math.min(pkMax(t), d)); if (d === g.d) return; g.d = d; svg.innerHTML = parkSvg(t, d, ''); $('#pkv').textContent = d; };
+      if (!g.checked) {
+        // палец — центр машины; переводим его в расстояние до предмета, шаг 1 м
+        const fromPointer = ev => {
+          const b = svg.getBoundingClientRect(), s = PK.span - (ev.clientY - b.top) / b.height * PK.span, [s0, s1] = pkObj(t);
+          g.setD(Math.round(t.side === 'before' ? s0 - s - PK.car / 2 : s - PK.car / 2 - s1));
+        };
+        svg.onpointerdown = ev => { svg.setPointerCapture(ev.pointerId); fromPointer(ev); svg.onpointermove = fromPointer; };
+        svg.onpointerup = svg.onpointercancel = () => { svg.onpointermove = null; };
+      }
+    }
+    return e => {
+      const a = e.target.closest('[data-act]')?.dataset.act;
+      if (a === 'pk-again') { nPark = null; return screenNumbers(); }
+      if (done || !a) return;
+      if (a === 'pk-inc' || a === 'pk-dec') return g.setD(g.d + (a === 'pk-inc' ? 1 : -1));
+      if (a === 'pk-check') { g.checked = true; g.res.push({ ti: g.order[g.i], d: g.d, r: pkRes(t, g.d) }); return redrawNumbers(); }
+      if (a === 'pk-next') {
+        g.i++; g.checked = false; g.d = null;
+        if (g.i >= g.order.length) {
+          const ok = g.res.filter(x => x.r === 'ok').length;
+          S.nBest = S.nBest || {};
+          const prev = g.prev = S.nBest.park;
+          if (!prev || ok > prev.ok) { S.nBest.park = { ok, n: g.res.length }; g.rec = !!prev; }
+          save();
+        }
+        return redrawNumbers();
+      }
     };
   }
 
