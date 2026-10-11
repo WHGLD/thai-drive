@@ -416,10 +416,25 @@
   const MARK = { ok: ['✅', 'закон'], key: ['🔑', 'ключ DLT'], unv: ['🟡', 'не подтверждено'], warn: ['⚠️', 'внимание'] };
   const mk = m => m && MARK[m] ? `<i class="mk" title="${MARK[m][1]}">${MARK[m][0]}</i>` : '';
   const num = (v, cls = '') => `<span class="num ${cls}" data-num>${esc(v)}</span>`;
+  const N_MODES = [['sheet', 'Шпаргалка', 'Сроки, расстояния, скорости — для запоминания'], ['sort', 'Расстояния', 'Разложите расстояния по полкам'], ['speed', 'Скорость', 'Поставьте стрелку на нужную скорость']];
+  // перерисовать экран, не сбрасывая прокрутку
+  const redrawNumbers = () => { const y = window.scrollY; screenNumbers(); window.scrollTo(0, y); };
   function screenNumbers() {
     const N = window.NUMBERS;
-    chrome({ title: 'Цифры', subtitle: 'Сроки, расстояния, скорости — для запоминания', tab: 'numbers' });
+    const mode = N_MODES.find(m => m[0] === S.nMode) || N_MODES[0];
+    chrome({ title: 'Цифры', subtitle: mode[2], tab: 'numbers' });
     if (!N) { view('<div class="empty">Нет данных</div>'); return; }
+    const seg = `<div class="seg">${N_MODES.map(([id, t]) => `<button class="${mode[0] === id ? 'on' : ''}" data-nmode="${id}">${t}</button>`).join('')}</div>`;
+    const handle = { sheet: numSheet, sort: numSort, speed: numSpeed }[mode[0]](N, seg);
+    $('#view').onclick = e => {
+      const m = e.target.closest('[data-nmode]');
+      if (m) { S.nMode = m.dataset.nmode; save(); return screenNumbers(); }
+      handle(e);
+    };
+  }
+
+  /* шпаргалка */
+  function numSheet(N, seg) {
     const hide = !!S.numHide;
     const sec = (id, title, body, sub = '') => `<section class="nsec" id="n-${id}"><h2 class="nh">${title}${sub ? `<small>${sub}</small>` : ''}</h2>${body}</section>`;
     // ans: какая колонка — «ответ» (скрывается в режиме проверки): 'k' — левая (число), 'v' — правая
@@ -450,8 +465,8 @@
     const kerbs = `<div class="card">${N.kerbs.map(k => `<div class="kerb"><span class="kstripe" style="--a:${k.c[0]};--b:${k.c[1]}"></span>
         <div class="kt"><b>${esc(k.name)}</b><span>${esc(k.txt)}</span></div>
         <span class="kyn ${k.stop ? 'y' : 'n'}">${k.stop ? '✓' : '✕'}<small>стоп</small></span><span class="kyn ${k.park ? 'y' : 'n'}">${k.park ? '✓' : '✕'}<small>стоянка</small></span></div>`).join('')}</div>`;
-    const nav = [['exam', 'Экзамен'], ['speed', 'Скорость'], ['alcohol', 'Алкоголь'], ['dist', 'Расстояния'], ['time', 'Секунды'], ['terms', 'Сроки'], ['kerb', 'Бордюры'], ['fines', 'Штрафы'], ['tech', 'Техника']];
-    view(`
+    const nav = [['speed', 'Скорость'], ['alcohol', 'Алкоголь'], ['dist', 'Расстояния'], ['time', 'Секунды'], ['terms', 'Сроки'], ['kerb', 'Бордюры'], ['fines', 'Штрафы'], ['tech', 'Техника']];
+    view(`${seg}
       <div class="card ntop">
         <div><b>Режим проверки</b><span class="muted small">цифры скрыты — нажмите, чтобы открыть</span></div>
         <button class="switch ${hide ? 'on' : ''}" data-act="hide" aria-pressed="${hide}"><i></i></button>
@@ -459,7 +474,6 @@
       <div class="chips nchips">${nav.map(([id, t]) => `<button class="chip" data-go="${id}">${t}</button>`).join('')}</div>
       <p class="muted small legend">✅ закон · 🔑 ключ DLT · 🟡 первоисточник не найден</p>
       <div id="nbody" class="${hide ? 'hidden-nums' : ''}">
-      ${sec('exam', 'Экзамен', `<div class="card exam"><div class="ebar"><i style="width:${N.exam.pass / N.exam.total * 100}%"></i><span>${num(N.exam.pass)} из ${N.exam.total}</span></div><p class="small muted" style="margin:8px 0 0">${N.exam.total} вопросов · проходной балл 90% — можно ошибиться не больше чем в ${num(N.exam.total - N.exam.pass)} ✅</p></div>`)}
       ${sec('speed', 'Скорость, км/ч', speed, 'постановление 2021, действует с 07.2022 ✅')}
       ${sec('alcohol', 'Алкоголь', alcohol)}
       ${sec('dist', 'Расстояния', '<p class="muted small" style="margin:-4px 4px 8px">«…» в тексте — это число в кружке слева.</p>' + ladder + '<h3 class="nh3">Без расстояния — всегда</h3>' + rows(N.always, 'v'), 'от меньшего к большему')}
@@ -470,10 +484,157 @@
       ${sec('tech', 'Техника', rows(N.tech, 'v'))}
       </div>
       <p class="muted small" style="text-align:center;margin-top:18px">Источник: numbers.md · проверено 10.10.2026</p>`);
-    $('#view').onclick = e => {
-      if (e.target.closest('[data-act="hide"]')) { S.numHide = !S.numHide; save(); const y = window.scrollY; screenNumbers(); window.scrollTo(0, y); return; }
+    return e => {
+      if (e.target.closest('[data-act="hide"]')) { S.numHide = !S.numHide; save(); return redrawNumbers(); }
       const g = e.target.closest('[data-go]'); if (g) { document.getElementById('n-' + g.dataset.go)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
       const n = e.target.closest('[data-num]'); if (n && S.numHide) { n.classList.toggle('shown'); }
+    };
+  }
+
+  /* игра «Разложи по полочкам»: карточка — [текст, полка, метка, статья] */
+  let nSort = null;  // текущий раунд (в памяти, как колода слов)
+  const fmtTime = ms => { const s = Math.round(ms / 1000); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+  const replay = el => { el.classList.remove('anim'); void el.offsetWidth; el.classList.add('anim'); };
+  function numSort(N, seg) {
+    const sets = N.sort;
+    const set = sets.find(s => s.id === S.sgSet) || sets[0];
+    if (!nSort || nSort.set !== set.id) nSort = { set: set.id, order: shuffle([...set.cards.keys()]), i: 0, put: set.bins.map(() => []), err: {}, miss: 0, t0: Date.now(), fb: null };
+    const g = nSort, done = g.i >= g.order.length, cur = set.cards[g.order[g.i]];
+    const many = set.bins.length > 4;
+    const chips = `<div class="chips">${sets.map(s => `<button class="chip ${s.id === set.id ? 'on' : ''}" data-sgset="${s.id}">${esc(s.name)}<i>${s.cards.length}</i></button>`).join('')}</div>`;
+    if (done) {
+      view(`${seg}${chips}
+        <div class="card sg-done"><div class="big">${g.miss ? '👍' : '🎉'}</div><b>Всё разложено</b>
+          <p class="muted small">Время ${fmtTime(g.t)} · ${g.miss ? plural(g.miss, 'ошибка', 'ошибки', 'ошибок') : 'без ошибок'}${g.rec ? ' · новый рекорд!' : g.prev ? ` · лучший: ${fmtTime(g.prev.t)}, ${g.prev.e ? plural(g.prev.e, 'ошибка', 'ошибки', 'ошибок') : 'без ошибок'}` : ''}</p>
+          <button class="btn" data-act="sg-again">Ещё раз</button></div>
+        <h3 class="nh3">${esc(set.ask)}</h3>
+        <div class="card nlist">${set.bins.map((b, bi) => `<div class="nrow"><span class="nk"><b>${esc(b)}</b></span><span class="nv">${g.put[bi].map(ci => `<span class="${g.err[ci] ? 'sg-e' : ''}">${esc(set.cards[ci][0])}</span>`).join('<br>')}</span></div>`).join('')}</div>
+        ${g.miss ? '<p class="muted small" style="margin:8px 4px 0">Красным — где ошиблись.</p>' : ''}`);
+    } else {
+      // в полке: на 4 полки — подписи карточек, на 8 — точки (подписи не помещаются)
+      const inBin = bi => g.put[bi].length ? `<span class="sg-in">${g.put[bi].map(ci => many ? `<i class="dot ${g.err[ci] ? 'err' : ''}"></i>` : `<i class="${g.err[ci] ? 'err' : ''}">${esc(set.cards[ci][0])}</i>`).join('')}</span>` : '';
+      view(`${seg}${chips}
+        <div class="wprog sg-prog"><i style="width:${g.i / g.order.length * 100}%"></i></div>
+        <p class="muted small sg-meta" id="sgmeta">${g.i + 1} из ${g.order.length}${g.miss ? ` · ${plural(g.miss, 'ошибка', 'ошибки', 'ошибок')}` : ''}</p>
+        <div class="sg-card" id="sgcard"><small>${esc(set.ask)}</small>${esc(cur[0])}</div>
+        <p class="sg-fb ${g.fb ? 'ok' : ''}" id="sgfb">${g.fb || 'Нажмите на полку с правильным расстоянием'}</p>
+        <div class="sg-bins ${many ? 'many' : ''}">${set.bins.map((b, bi) => `<button class="sg-bin" data-bin="${bi}"><b>${esc(b)}</b>${inBin(bi)}</button>`).join('')}</div>`);
+      if (g.last != null) { const el = document.querySelector(`[data-bin="${g.last}"]`); el.classList.add('good'); replay(el); g.last = null; }
+    }
+    return e => {
+      const s = e.target.closest('[data-sgset]'); if (s) { S.sgSet = s.dataset.sgset; save(); nSort = null; return screenNumbers(); }
+      if (e.target.closest('[data-act="sg-again"]')) { nSort = null; return screenNumbers(); }
+      const b = e.target.closest('[data-bin]'); if (!b || done) return;
+      const bi = +b.dataset.bin, ci = g.order[g.i], card = set.cards[ci];
+      if (set.bins[bi] === card[1]) {
+        g.put[bi].push(ci); g.i++; g.last = bi;
+        g.fb = `✓ ${esc(card[1])} · ${mk(card[2])} ${esc(card[3])}`;
+        if (g.i >= g.order.length) {
+          g.t = Date.now() - g.t0;
+          S.nBest = S.nBest || {};
+          const k = 'sort:' + set.id, prev = g.prev = S.nBest[k];
+          if (!prev || g.miss < prev.e || (g.miss === prev.e && g.t < prev.t)) { S.nBest[k] = { e: g.miss, t: g.t }; g.rec = !!prev; }
+          save();
+        }
+        return redrawNumbers();
+      }
+      g.miss++; g.err[ci] = 1;
+      b.classList.remove('good'); b.classList.add('bad'); replay(b);
+      replay($('#sgcard'));
+      const fb = $('#sgfb'); fb.className = 'sg-fb bad'; fb.textContent = `Не ${set.bins[bi]} — попробуйте другую полку`;
+      $('#sgmeta').textContent = `${g.i + 1} из ${g.order.length} · ${plural(g.miss, 'ошибка', 'ошибки', 'ошибок')}`;
+      try { navigator.vibrate?.(40); } catch (_) {}
+    };
+  }
+
+  /* игра «Спидометр»: машина / мотоцикл / мотоцикл ≥ 400 см³ × 4 зоны */
+  let nSpeed = null;
+  const SP_MAX = 140, SP_CX = 120, SP_CY = 124, SP_R = 100;
+  const spRot = v => `rotate(${v / SP_MAX * 180} ${SP_CX} ${SP_CY})`;
+  const spWho = r => r.who.replace(/\s*\/.*/, '');
+  function speedGauge(val, ans, cls) {
+    const pt = (v, r) => { const a = Math.PI * (1 - v / SP_MAX); return [(SP_CX + r * Math.cos(a)).toFixed(1), (SP_CY - r * Math.sin(a)).toFixed(1)]; };
+    const arc = (a, b, r = SP_R) => { const [x1, y1] = pt(a, r), [x2, y2] = pt(b, r); return `M${x1} ${y1}A${r} ${r} 0 0 1 ${x2} ${y2}`; };
+    let ticks = '';
+    for (let v = 0; v <= SP_MAX; v += 10) {
+      const maj = v % 20 === 0, [x1, y1] = pt(v, SP_R - (maj ? 13 : 7)), [x2, y2] = pt(v, SP_R);
+      ticks += `<line class="spd-tick ${maj ? 'maj' : ''}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>`;
+      if (maj) { const [lx, ly] = pt(v, SP_R - 27); ticks += `<text class="spd-lbl" x="${lx}" y="${+ly + 4}">${v}</text>`; }
+    }
+    return `<svg viewBox="0 0 240 136" aria-label="Спидометр">
+      <path class="spd-arc" d="${arc(0, SP_MAX)}"/>${ticks}
+      ${ans != null ? `<path class="spd-ans" d="${arc(Math.max(0, ans - 3), Math.min(SP_MAX, ans + 3), SP_R + 1)}"/>` : ''}
+      <g id="spd-needle" class="spd-needle ${cls || ''}" transform="${spRot(val)}"><line x1="${SP_CX}" y1="${SP_CY}" x2="${SP_CX - SP_R + 38}" y2="${SP_CY}"/></g>
+      <circle class="spd-hub" cx="${SP_CX}" cy="${SP_CY}" r="7"/></svg>`;
+  }
+  function numSpeed(N, seg) {
+    const R = N.speedMain;
+    const f = ['all', ...R.keys()].map(String).includes(S.spF) ? S.spF : 'all';
+    if (!nSpeed || nSpeed.f !== f) {
+      const tasks = [];
+      R.forEach((r, ri) => { if (f === 'all' || +f === ri) r.v.forEach((_, zi) => tasks.push({ ri, zi })); });
+      nSpeed = { f, tasks: shuffle(tasks), i: 0, val: 0, res: [], checked: false };
+    }
+    const g = nSpeed, done = g.i >= g.tasks.length, t = g.tasks[g.i];
+    const chips = `<div class="chips">${[['all', 'Все'], ...R.map((r, i) => [String(i), `${r.icon} ${spWho(r)}`])].map(([id, name]) => `<button class="chip ${f === id ? 'on' : ''}" data-spf="${id}">${esc(name)}</button>`).join('')}</div>`;
+    const note = '<p class="muted small sp-note">Ответы — по постановлению 2021 г., на экзамене так же. В Бангкоке на деле 60 км/ч на большинстве дорог.</p>';
+    if (done) {
+      const okN = g.res.filter(x => x.ok).length;
+      view(`${seg}${chips}
+        <div class="card sg-done"><div class="big">${okN === g.res.length ? '🎉' : '🏁'}</div><b>${okN} из ${g.res.length} верно</b>
+          <p class="muted small">${g.rec ? 'Новый рекорд!' : g.prev ? `Лучший результат: ${g.prev.ok} из ${g.prev.n}` : ''}</p>
+          <button class="btn" data-act="sp-again">Ещё раз</button></div>
+        <h3 class="nh3">Ответы, км/ч</h3>
+        <div class="card sp-sum"><table class="ntable sp-table"><thead><tr><th></th>${N.speedZones.map((_, i) => `<th>${i + 1}</th>`).join('')}</tr></thead>
+          <tbody>${R.map((r, ri) => `<tr><td>${r.icon} ${esc(spWho(r))}</td>${r.v.map((v, zi) => { const x = g.res.find(y => y.ri === ri && y.zi === zi);
+            return `<td class="${x ? (x.ok ? 'ok' : 'bad') : ''}">${v}${x && !x.ok ? `<small>было ${x.val}</small>` : ''}</td>`; }).join('')}</tr>`).join('')}</tbody></table>
+          <p class="muted small" style="margin:8px 0 0">${N.speedZones.map((z, i) => `<b>${i + 1}</b> — ${esc(z)}`).join(' · ')}</p></div>${note}`);
+    } else {
+      const r = R[t.ri], ans = r.v[t.zi], ok = g.checked && g.val === ans;
+      view(`${seg}${chips}
+        <div class="wprog sg-prog"><i style="width:${g.i / g.tasks.length * 100}%"></i></div>
+        <p class="muted small sg-meta">${g.i + 1} из ${g.tasks.length}</p>
+        <div class="card sp-task"><span class="sp-ico">${r.icon}</span><div><b>${esc(r.who)}</b>
+          <div class="sp-zone">${esc(N.speedZones[t.zi])}</div><div class="muted small">${esc(N.speedZonesHint[t.zi])}</div></div></div>
+        <div class="sp-gauge" id="spg">${speedGauge(g.val, g.checked ? ans : null, g.checked ? (ok ? 'ok' : 'bad') : '')}</div>
+        <div class="sp-read ${g.checked ? (ok ? 'ok' : 'bad') : ''}"><span id="spv">${g.val}</span><small>км/ч</small></div>
+        ${g.checked ? `<p class="sg-fb ${ok ? 'ok' : 'bad'}">${ok ? '✓ Верно' : `✕ Нужно ${ans} км/ч — отмечено зелёным на шкале`}</p>
+          <button class="btn" data-act="sp-next">${g.i + 1 < g.tasks.length ? 'Дальше' : 'Итог'}</button>`
+        : `<div class="btn-row sp-ctl"><button class="btn ghost" data-act="sp-dec" aria-label="Меньше на 10">−</button><button class="btn" data-act="sp-check">Проверить</button><button class="btn ghost" data-act="sp-inc" aria-label="Больше на 10">+</button></div>
+          <p class="muted small sp-note">Перетащите стрелку или нажмите на шкалу. Шаг — 10 км/ч.</p>`}
+        ${note}`);
+      const svg = $('#spg svg');
+      const setVal = v => { v = Math.max(0, Math.min(SP_MAX, v)); if (v === g.val) return; g.val = v; $('#spd-needle').setAttribute('transform', spRot(v)); $('#spv').textContent = v; };
+      if (!g.checked) {
+        // угол точки касания относительно центра шкалы → скорость, с шагом 10
+        const fromPointer = ev => {
+          const b = svg.getBoundingClientRect();
+          const x = (ev.clientX - b.left) / b.width * 240 - SP_CX, y = SP_CY - (ev.clientY - b.top) / b.height * 136;
+          setVal(Math.round((1 - Math.atan2(Math.max(y, 0), x) / Math.PI) * SP_MAX / 10) * 10);
+        };
+        svg.onpointerdown = ev => { svg.setPointerCapture(ev.pointerId); fromPointer(ev); svg.onpointermove = fromPointer; };
+        svg.onpointerup = svg.onpointercancel = () => { svg.onpointermove = null; };
+      }
+      g.setVal = setVal;
+    }
+    return e => {
+      const c = e.target.closest('[data-spf]'); if (c) { S.spF = c.dataset.spf; save(); nSpeed = null; return screenNumbers(); }
+      const a = e.target.closest('[data-act]')?.dataset.act;
+      if (a === 'sp-again') { nSpeed = null; return screenNumbers(); }
+      if (done || !a) return;
+      if (a === 'sp-inc' || a === 'sp-dec') return g.setVal(g.val + (a === 'sp-inc' ? 10 : -10));
+      if (a === 'sp-check') { g.checked = true; g.res.push({ ri: t.ri, zi: t.zi, val: g.val, ok: g.val === R[t.ri].v[t.zi] }); return redrawNumbers(); }
+      if (a === 'sp-next') {
+        g.i++; g.checked = false; g.val = 0;
+        if (g.i >= g.tasks.length) {
+          const okN = g.res.filter(x => x.ok).length;
+          S.nBest = S.nBest || {};
+          const k = 'speed:' + f, prev = g.prev = S.nBest[k];
+          if (!prev || okN / g.res.length > prev.ok / prev.n) { S.nBest[k] = { ok: okN, n: g.res.length }; g.rec = !!prev; }
+          save();
+        }
+        return redrawNumbers();
+      }
     };
   }
 
